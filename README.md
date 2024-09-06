@@ -14,7 +14,9 @@
 </ul>
 <h2>Setting Up</h2>
 <ol>
-   <li>Choose a valid <a href="https://powerbislider.com">Power BI Slider</a> URL. You can test it using the <strong>"Test URL"</strong> button.</li>
+   <li>Open <a href="https://powerbislider.com">Power BI Slider</a> on your internet browser and choose a valid <a href="https://powerbislider.com">Power BI Slider</a> URL. You can test it using the <strong>"Test URL"</strong> button.</li>
+<img src="https://github.com/user-attachments/assets/9dc865ef-8ca6-445a-bb8b-adf064ebff12" />
+
    <li>Check/uncheck the <strong>"Start on System Startup"</strong> option to make Windows launch or remove Power BI Slider on startup.</li>
    <li>Click <strong>"Save"</strong> and close the app. On the next boot, your dashboard will launch automatically.</li>
 </ol>
