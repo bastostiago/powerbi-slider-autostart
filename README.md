@@ -21,4 +21,6 @@
    <li>Click <strong>"Save"</strong> and close the app. On the next boot, your dashboard will launch automatically.</li>
 </ol>
 <h2>Other Comments</h2>
-<p>If you're not logged into <a href="https://powerbislider.com">Power BI Slider</a> in your browser, you will need to log in the first time.</p>
+<p>The first time you launch your report, you will probably need to log in if you did not select "stay signed in" previously. I suggest you choose this option; that way, the report will automatically start by itself on the next system restart.</p>
+<img src="https://github.com/user-attachments/assets/925be583-a32f-4041-8921-8cfbdfa8a6a4" />
+
