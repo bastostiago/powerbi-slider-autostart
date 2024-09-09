@@ -6,7 +6,7 @@
    <li>Optionally, create an installable app using <a href="https://jrsoftware.org/isinfo.php">Inno Setup</a> with the <strong>inno_setup.iss</strong> file.</li>
 </ul>
 <h1>Running the App</h1>
-<img src="https://private-user-images.githubusercontent.com/38707338/365289967-3c7542c0-2e2a-4db6-a728-c196216d8caf.png?jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3MjU2NTQwMTAsIm5iZiI6MTcyNTY1MzcxMCwicGF0aCI6Ii8zODcwNzMzOC8zNjUyODk5NjctM2M3NTQyYzAtMmUyYS00ZGI2LWE3MjgtYzE5NjIxNmQ4Y2FmLnBuZz9YLUFtei1BbGdvcml0aG09QVdTNC1ITUFDLVNIQTI1NiZYLUFtei1DcmVkZW50aWFsPUFLSUFWQ09EWUxTQTUzUFFLNFpBJTJGMjAyNDA5MDYlMkZ1cy1lYXN0LTElMkZzMyUyRmF3czRfcmVxdWVzdCZYLUFtei1EYXRlPTIwMjQwOTA2VDIwMTUxMFomWC1BbXotRXhwaXJlcz0zMDAmWC1BbXotU2lnbmF0dXJlPWJjMmRlNDMwN2JjMDMxNThmYjFkMjIwYjRkZDZhZjRlN2RlNmI0NzNlM2EzZjNhYTUwMzJkYzIzNzhhZTMwNWEmWC1BbXotU2lnbmVkSGVhZGVycz1ob3N0JmFjdG9yX2lkPTAma2V5X2lkPTAmcmVwb19pZD0wIn0.JbPne6UXi8JhYxy2RMjrRdxjn-SOwDb2ciiA4M17Z7M"> 
+<img src="https://github.com/user-attachments/assets/56ad22d0-ce7a-4ae8-9cc1-eb04d2fe6f44" /> 
 <h2>System Requirements</h2>
 <ul>
    <li>Windows 10 (or newer) or Windows Server 2016 (or newer).</li>
