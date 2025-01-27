@@ -1,6 +1,6 @@
 [Setup]
 AppName=PB Slider Launcher
-AppVersion=1.0.0
+AppVersion=1.0.1
 AppId=12951e62-75ce-4dc1-9ef8-fcb629373ed4
 WizardStyle=modern
 DefaultDirName={commonpf}\PB Slider Launcher
