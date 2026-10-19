@@ -1,4 +1,4 @@
-// Strings for the launcher's pages, in the site's languages. The page language follows the browser's.
+// Strings for the launcher's pages, in the site's languages.
 const T = {
   en: {
     updateAvailable: "Version {v} is available.",
@@ -15,7 +15,7 @@ const T = {
     browserLabel: 'Browser', auto: 'Automatic', autostart: 'Start when this computer starts',
     save: 'Save', signin: 'Sign in', start: 'Start now',
     saved: 'Saved.', invalid_url: 'This is not a Power Slider address (powerslider.app or powerbislider.com).', error: 'Something went wrong. Details in launcher.log.',
-    signinOpened: 'Sign in with your Microsoft account in the window that opened, then close it.', started: 'Presentation started. To stop it, close it three times in a row (Alt+F4).',
+    signinOpened: 'Sign in with your Microsoft account in the window that opened, then close it.', started: "Presentation started. To stop it, click the Power Slider icon next to the clock (press the Windows key to see it).",
     steps: 'First time: paste the address, Save, then Sign in once. A presentation closed by mistake reopens on its own.',
   },
   'pt-BR': {
@@ -33,7 +33,7 @@ const T = {
     browserLabel: 'Navegador', auto: 'Automático', autostart: 'Iniciar quando este computador ligar',
     save: 'Salvar', signin: 'Entrar', start: 'Iniciar agora',
     saved: 'Salvo.', invalid_url: 'Este não é um endereço do Power Slider (powerslider.app ou powerbislider.com).', error: 'Algo deu errado. Detalhes em launcher.log.',
-    signinOpened: 'Entre com sua conta Microsoft na janela que abriu e depois feche-a.', started: 'Apresentação iniciada. Para parar, feche-a três vezes seguidas (Alt+F4).',
+    signinOpened: 'Entre com sua conta Microsoft na janela que abriu e depois feche-a.', started: "Apresentação iniciada. Para parar, clique no ícone do Power Slider perto do relógio (aperte a tecla Windows para vê-lo).",
     steps: 'Primeira vez: cole o endereço, salve e clique em Entrar uma vez. Uma apresentação fechada sem querer abre de novo sozinha.',
   },
   es: {
@@ -51,7 +51,7 @@ const T = {
     browserLabel: 'Navegador', auto: 'Automático', autostart: 'Iniciar cuando este equipo se inicie',
     save: 'Guardar', signin: 'Iniciar sesión', start: 'Iniciar ahora',
     saved: 'Guardado.', invalid_url: 'Esta no es una dirección de Power Slider (powerslider.app o powerbislider.com).', error: 'Algo salió mal. Detalles en launcher.log.',
-    signinOpened: 'Inicia sesión con tu cuenta de Microsoft en la ventana que se abrió y luego ciérrala.', started: 'Presentación iniciada. Para detenerla, ciérrala tres veces seguidas (Alt+F4).',
+    signinOpened: 'Inicia sesión con tu cuenta de Microsoft en la ventana que se abrió y luego ciérrala.', started: "Presentación iniciada. Para detenerla, haz clic en el icono de Power Slider junto al reloj (pulsa la tecla Windows para verlo).",
     steps: 'La primera vez: pega la dirección, guarda e inicia sesión una vez. Una presentación cerrada por error se vuelve a abrir sola.',
   },
   fr: {
@@ -69,7 +69,7 @@ const T = {
     browserLabel: 'Navigateur', auto: 'Automatique', autostart: 'Démarrer au démarrage de cet ordinateur',
     save: 'Enregistrer', signin: 'Se connecter', start: 'Démarrer maintenant',
     saved: 'Enregistré.', invalid_url: "Ce n'est pas une adresse Power Slider (powerslider.app ou powerbislider.com).", error: "Un problème est survenu. Détails dans launcher.log.",
-    signinOpened: 'Connectez-vous avec votre compte Microsoft dans la fenêtre ouverte, puis fermez-la.', started: 'Présentation démarrée. Pour l’arrêter, fermez-la trois fois de suite (Alt+F4).',
+    signinOpened: 'Connectez-vous avec votre compte Microsoft dans la fenêtre ouverte, puis fermez-la.', started: "Présentation démarrée. Pour l'arrêter, cliquez sur l'icône Power Slider près de l'horloge (appuyez sur la touche Windows pour la voir).",
     steps: "La première fois : collez l'adresse, enregistrez, puis connectez-vous une fois. Une présentation fermée par erreur se rouvre toute seule.",
   },
   de: {
@@ -87,7 +87,7 @@ const T = {
     browserLabel: 'Browser', auto: 'Automatisch', autostart: 'Beim Start dieses Computers starten',
     save: 'Speichern', signin: 'Anmelden', start: 'Jetzt starten',
     saved: 'Gespeichert.', invalid_url: 'Das ist keine Power Slider-Adresse (powerslider.app oder powerbislider.com).', error: 'Etwas ist schiefgelaufen. Details in launcher.log.',
-    signinOpened: 'Melden Sie sich im geöffneten Fenster mit Ihrem Microsoft-Konto an und schließen Sie es dann.', started: 'Präsentation gestartet. Zum Beenden dreimal hintereinander schließen (Alt+F4).',
+    signinOpened: 'Melden Sie sich im geöffneten Fenster mit Ihrem Microsoft-Konto an und schließen Sie es dann.', started: "Präsentation gestartet. Zum Beenden auf das Power Slider-Symbol neben der Uhr klicken (Windows-Taste drücken, um es zu sehen).",
     steps: 'Beim ersten Mal: Adresse einfügen, speichern und einmal anmelden. Eine versehentlich geschlossene Präsentation öffnet sich von selbst wieder.',
   },
   it: {
@@ -105,7 +105,7 @@ const T = {
     browserLabel: 'Browser', auto: 'Automatico', autostart: "Avvia all'accensione di questo computer",
     save: 'Salva', signin: 'Accedi', start: 'Avvia ora',
     saved: 'Salvato.', invalid_url: 'Questo non è un indirizzo di Power Slider (powerslider.app o powerbislider.com).', error: 'Qualcosa è andato storto. Dettagli in launcher.log.',
-    signinOpened: 'Accedi con il tuo account Microsoft nella finestra che si è aperta, poi chiudila.', started: 'Presentazione avviata. Per fermarla, chiudila tre volte di seguito (Alt+F4).',
+    signinOpened: 'Accedi con il tuo account Microsoft nella finestra che si è aperta, poi chiudila.', started: "Presentazione avviata. Per fermarla, fai clic sull'icona di Power Slider vicino all'orologio (premi il tasto Windows per vederla).",
     steps: "La prima volta: incolla l'indirizzo, salva e accedi una volta. Una presentazione chiusa per errore si riapre da sola.",
   },
   nl: {
@@ -123,7 +123,7 @@ const T = {
     browserLabel: 'Browser', auto: 'Automatisch', autostart: 'Starten wanneer deze computer start',
     save: 'Opslaan', signin: 'Aanmelden', start: 'Nu starten',
     saved: 'Opgeslagen.', invalid_url: 'Dit is geen Power Slider-adres (powerslider.app of powerbislider.com).', error: 'Er ging iets mis. Details in launcher.log.',
-    signinOpened: 'Meld je aan met je Microsoft-account in het venster dat openging en sluit het daarna.', started: 'Presentatie gestart. Sluit hem drie keer achter elkaar om te stoppen (Alt+F4).',
+    signinOpened: 'Meld je aan met je Microsoft-account in het venster dat openging en sluit het daarna.', started: "Presentatie gestart. Klik om te stoppen op het Power Slider-pictogram bij de klok (druk op de Windows-toets om het te zien).",
     steps: 'De eerste keer: plak het adres, sla op en meld je één keer aan. Een per ongeluk gesloten presentatie opent vanzelf opnieuw.',
   },
   ar: {
@@ -141,12 +141,13 @@ const T = {
     browserLabel: 'المتصفح', auto: 'تلقائي', autostart: 'البدء عند تشغيل هذا الكمبيوتر',
     save: 'حفظ', signin: 'تسجيل الدخول', start: 'ابدأ الآن',
     saved: 'تم الحفظ.', invalid_url: 'هذا ليس عنوان Power Slider (powerslider.app أو powerbislider.com).', error: 'حدث خطأ. التفاصيل في launcher.log.',
-    signinOpened: 'سجّل الدخول بحساب Microsoft في النافذة التي فُتحت، ثم أغلقها.', started: 'بدأ العرض. لإيقافه، أغلقه ثلاث مرات متتالية (Alt+F4).',
+    signinOpened: 'سجّل الدخول بحساب Microsoft في النافذة التي فُتحت، ثم أغلقها.', started: "بدأ العرض. لإيقافه، انقر على أيقونة Power Slider بجوار الساعة (اضغط مفتاح Windows لرؤيتها).",
     steps: 'في المرة الأولى: الصق العنوان واحفظ ثم سجّل الدخول مرة واحدة. العرض الذي يُغلق عن طريق الخطأ يُفتح من جديد تلقائيًا.',
   },
 };
+// The launcher passes the operating system's language as ?lang=; the browser's is the fallback.
 const LANG = (() => {
-  const nav = (navigator.language || 'en').toLowerCase();
+  const nav = (new URLSearchParams(location.search).get('lang') || navigator.language || 'en').toLowerCase().replace('_', '-');
   return Object.keys(T).find((l) => l.toLowerCase() === nav) || Object.keys(T).find((l) => l.split('-')[0] === nav.split('-')[0]) || 'en';
 })();
 const t = (key, vars = {}) => (T[LANG][key] ?? T.en[key]).replace(/\{(\w+)\}/g, (_, k) => vars[k] ?? '');

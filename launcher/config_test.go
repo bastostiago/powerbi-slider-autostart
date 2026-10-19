@@ -62,3 +62,27 @@ func TestLoadsOldConfig(t *testing.T) {
 		t.Fatalf("round trip: got %+v, want %+v", again, cfg)
 	}
 }
+
+func TestTrayText(t *testing.T) {
+	cases := map[string]string{
+		"pt-BR":       "Parar apresentação",
+		"pt_PT.UTF-8": "Parar apresentação",
+		"de-AT":       "Präsentation beenden",
+		"es_419":      "Detener presentación",
+		"ja-JP":       "Stop presentation",
+		"":            "Stop presentation",
+	}
+	for locale, want := range cases {
+		if got := trayText(locale).stop; got != want {
+			t.Errorf("trayText(%q).stop = %q; want %q", locale, got, want)
+		}
+	}
+}
+
+func TestNormalizeLocale(t *testing.T) {
+	for in, want := range map[string]string{"pt_BR.UTF-8": "pt-BR", "de_AT@euro": "de-AT", "fr-FR": "fr-FR", "en": "en"} {
+		if got := normalizeLocale(in); got != want {
+			t.Errorf("normalizeLocale(%q) = %q; want %q", in, got, want)
+		}
+	}
+}

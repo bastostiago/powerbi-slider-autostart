@@ -10,6 +10,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"sync"
@@ -70,7 +71,10 @@ func (ui *localUI) open(page string, width, height int) (*exec.Cmd, error) {
 	if err != nil {
 		return nil, err
 	}
-	cmd := appWindowCommand(b, "http://"+ui.ln.Addr().String()+ui.base+"/"+page, width, height)
+	// The pages speak the operating system's language, not the browser's (they can differ, and the
+	// tray menu already follows the system).
+	address := "http://" + ui.ln.Addr().String() + ui.base + "/" + page + "?lang=" + url.QueryEscape(normalizeLocale(systemLanguage()))
+	cmd := appWindowCommand(b, address, width, height)
 	return cmd, cmd.Start()
 }
 
