@@ -20,7 +20,18 @@ from webdriver_manager.microsoft import EdgeChromiumDriverManager
 import logging
 import time
 
+# Continua com o nome antigo de propósito: guarda a URL e o perfil do navegador com a sessão
+# Microsoft da tela. Renomear desconectaria todas as telas na atualização.
 _CONFIG_DIR = os.path.expanduser("~\\AppData\\Local\\PB Slider Launcher")
+
+# O site saiu de powerbislider.com para powerslider.app e responde nos dois.
+_SITE_URL = re.compile(
+    r'^(https?://)?(localhost|(www\.)?powerslider\.app|(www\.)?powerbislider\.com)(/.*)?$'
+)
+
+
+def is_site_url(url):
+    return bool(_SITE_URL.match(url))
 
 # Tornar o aplicativo DPI-aware (Windows)
 if sys.platform.startswith('win'):
@@ -190,8 +201,7 @@ def check_url(urlIn=None):
     else:
         url = text_area.get("1.0", tk.END).strip()
 
-    pattern = re.compile(r'^(https?://)?(localhost|powerbislider\.com|www\.powerbislider\.com)(/.*)?$')
-    if pattern.match(url):
+    if is_site_url(url):
         if launch_button:
             launch_button.config(state=tk.NORMAL, text="Test URL")
         if app:
@@ -237,7 +247,7 @@ if __name__ == "__main__":
     
     # Cria a janela principal
     app = tk.Tk()
-    app.title(f"Settings - PB Slider Launcher (v{_MANIFEST['version']})")
+    app.title(f"Settings - {_MANIFEST['display_name']} (v{_MANIFEST['version']})")
 
     # Dimensões iniciais
     width, height = 500, 280
@@ -270,7 +280,7 @@ if __name__ == "__main__":
 
     main_frame.columnconfigure(0, weight=1)
 
-    url_label = tk.Label(main_frame, text="Power BI Slider URL:")
+    url_label = tk.Label(main_frame, text="Power Slider URL:")
     url_label.grid(row=0, column=0, sticky='w')
 
     text_area = tk.Text(main_frame, height=4)
