@@ -1,0 +1,3 @@
+# Packaged for Linux as they are: a CRLF in the .desktop entry breaks its Exec line.
+packaging/** text eol=lf
+VERSION text eol=lf

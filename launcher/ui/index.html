@@ -1,0 +1,115 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>Power Slider Launcher</title>
+<style>
+  :root { --bg: #f7f6f3; --surface: #fff; --border: #e8e5df; --ink: #1c1917; --soft: #57534e; --faint: #8a847c; --accent: #f8b500; --accent-hover: #ffc21a; --error: #b42318; --ok: #15803d; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body { font: 14px/1.45 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif; color: var(--soft); background: var(--bg); padding: 22px 24px; }
+  header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+  header img { height: 26px; display: block; }
+  .version { font-size: 12px; color: var(--faint); }
+  p { margin: 0; }
+  .intro { margin-bottom: 18px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 18px; display: flex; flex-direction: column; gap: 14px; }
+  label { display: block; font-weight: 600; color: var(--ink); margin-bottom: 6px; }
+  textarea, select { width: 100%; font: inherit; color: var(--ink); border: 1px solid var(--border); border-radius: 8px; padding: 9px 11px; background: #fff; }
+  textarea { resize: none; height: 70px; }
+  textarea:focus, select:focus { outline: 2px solid var(--accent); border-color: var(--accent); }
+  .hint { font-size: 12px; color: var(--faint); margin-top: 5px; }
+  .check { display: flex; align-items: center; gap: 9px; font-weight: 500; color: var(--ink); margin: 0; }
+  .check input { width: 17px; height: 17px; accent-color: var(--accent); }
+  .actions { display: flex; flex-direction: column; gap: 10px; margin-top: 16px; }
+  button { font: inherit; font-weight: 600; border-radius: 10px; padding: 11px 14px; cursor: pointer; border: 1px solid var(--border); background: var(--surface); color: var(--ink); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #1f1a14; }
+  button.primary:hover { background: var(--accent-hover); }
+  button:disabled { opacity: .5; cursor: default; }
+  .row { display: flex; gap: 10px; }
+  .row button { flex: 1; }
+  #status { min-height: 20px; font-size: 13px; margin-top: 12px; }
+  #status.error { color: var(--error); }
+  #status.ok { color: var(--ok); }
+  .steps { font-size: 12px; color: var(--faint); margin-top: 14px; }
+  .update { display: flex; align-items: center; justify-content: space-between; gap: 12px; background: #fff6dc; border: 1px solid #f8d27a; border-radius: 10px; padding: 10px 12px; margin-bottom: 14px; color: var(--ink); }
+  .update button { padding: 7px 12px; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+  <header><img src="logo.svg" alt="Power Slider" /><span class="version" id="version"></span></header>
+  <p class="intro" data-t="intro"></p>
+  <div class="update" id="update" hidden><span id="updateText"></span><button class="primary" id="updateButton" data-t="updateButton"></button></div>
+
+  <div class="card">
+    <div>
+      <label for="url" data-t="urlLabel"></label>
+      <textarea id="url" spellcheck="false" dir="ltr"></textarea>
+      <p class="hint" data-t="urlHint"></p>
+    </div>
+    <div>
+      <label for="browser" data-t="browserLabel"></label>
+      <select id="browser"></select>
+    </div>
+    <label class="check"><input type="checkbox" id="autostart" /><span data-t="autostart"></span></label>
+  </div>
+
+  <div class="actions">
+    <button class="primary" id="save" data-t="save"></button>
+    <div class="row">
+      <button id="signin" data-t="signin"></button>
+      <button id="start" data-t="start"></button>
+    </div>
+  </div>
+  <p id="status" role="status"></p>
+  <p class="steps" data-t="steps"></p>
+
+<script src="i18n.js"></script>
+<script>
+const $ = (id) => document.getElementById(id);
+const status = (key, kind = '', vars) => { $('status').textContent = key ? t(key, vars) : ''; $('status').className = kind; };
+const call = async (path, body) => {
+  const res = await fetch('api/' + path, body ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : { method: 'POST' });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || 'error');
+  return data;
+};
+const NAMES = { chrome: 'Google Chrome', edge: 'Microsoft Edge', chromium: 'Chromium' };
+
+(async () => {
+  const s = await (await fetch('api/state')).json();
+  $('version').textContent = 'v' + s.version;
+  $('url').value = s.url || '';
+  $('autostart').checked = s.autostart;
+  $('browser').innerHTML = [`<option value="auto">${t('auto')}</option>`, ...s.browsers.map((b) => `<option value="${b}">${NAMES[b]}</option>`)].join('');
+  $('browser').value = s.browsers.includes(s.browser) ? s.browser : 'auto';
+})();
+
+const save = async () => {
+  const r = await call('save', { url: $('url').value, browser: $('browser').value, autostart: $('autostart').checked });
+  $('url').value = r.url;
+};
+const fail = (e) => status(e.message === 'invalid_url' ? 'invalid_url' : 'error', 'error');
+// Sign in and Start save first, so they always use what is on screen.
+$('save').onclick = async () => { try { await save(); status('saved', 'ok'); } catch (e) { fail(e); } };
+$('signin').onclick = async () => { try { await save(); await call('signin'); status('signinOpened', 'ok'); } catch (e) { fail(e); } };
+$('start').onclick = async () => { try { await save(); await call('start'); status('started', 'ok'); } catch (e) { fail(e); } };
+// Offered, never installed without the click.
+(async () => {
+  try {
+    const u = await (await fetch('api/update')).json();
+    if (!u.available) return;
+    $('updateText').textContent = t('updateAvailable', { v: u.latest });
+    $('update').hidden = false;
+  } catch {}
+})();
+$('updateButton').onclick = async () => {
+  $('updateButton').disabled = true;
+  status('updating', 'ok');
+  try { await call('update/apply'); } catch { $('updateButton').disabled = false; status('updateFailed', 'error'); }
+};
+setInterval(() => fetch('api/ping').catch(() => {}), 5000);
+</script>
+</body>
+</html>

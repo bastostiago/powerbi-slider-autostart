@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Power Slider Launcher
+Comment=Opens a Power Slider presentation when this computer starts
+Exec=/usr/bin/power-slider-launcher
+Icon=power-slider-launcher
+Terminal=false
+Categories=Utility;
