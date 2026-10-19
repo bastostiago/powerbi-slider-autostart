@@ -1,10 +1,25 @@
-<h1>Objective</h1>
-<p>The app's objective is to set up a <a href="https://www.powerslider.app">Power Slider</a> URL (containing your Power BI dashboard) to automatically start when Windows boots. It accepts addresses on powerslider.app and on the old powerbislider.com.</p>
-<h1>Compiling the Application</h1>
+<h1>Power Slider Launcher</h1>
+<p>Opens a <a href="https://www.powerslider.app">Power Slider</a> presentation in full screen when the computer starts, and opens it again if the browser closes or crashes. Windows and Linux (Debian, Ubuntu, Raspberry Pi OS), with Google Chrome, Microsoft Edge or Chromium.</p>
+
+<h2>How it works</h2>
 <ul>
-   <li>Use <strong>bundle.py</strong> to build the executable (EXE) file.</li>
-   <li>Optionally, create an installable app using <a href="https://jrsoftware.org/isinfo.php">Inno Setup</a> with the <strong>inno_setup.iss</strong> file.</li>
+  <li><code>launcher</code> (no arguments) opens the settings window: a local page shown as an Edge/Chrome app window, in the site's eight languages. Save the presentation address, sign in once with Microsoft, start.</li>
+  <li><code>launcher launch</code> is what the boot shortcut runs: the browser in kiosk mode on the address plus <code>?present=1</code> (the site starts the slideshow without a click), restarted when it closes. Three closes within two minutes stop it, so a person can get out with Alt+F4.</li>
+  <li>Updates come from this repository's latest GitHub release. The launcher asks before installing: in the settings window, and at boot (a prompt that gives up after a minute so an unattended screen still presents).</li>
 </ul>
-<p>The executable, its Startup shortcut, the install folder and the data folder keep the old "PB Slider Launcher" name on purpose: an installed screen updated in place must keep booting through the shortcut it already has, with the browser profile that holds its Microsoft session. Only what people see is named Power Slider Launcher.</p>
-<h1>Docs</h1>
-<p>Check the <a href="https://github.com/bastostiago/powerbi-slider-autostart/wiki">documentation</a> for more details on how to use it.</p>
+<p>Version 3 replaced the Python/Selenium launcher. It keeps its executable name, Startup shortcut (<code>PB Slider Launcher.lnk</code> with <code>launch</code>), install folder and data folder (<code>%LOCALAPPDATA%\PB Slider Launcher</code>, with <code>config.ini</code> and the browser profiles), so a screen updated in place keeps its address and its Microsoft session.</p>
+
+<h2>Building</h2>
+<p>Needs Go, Inno Setup 6 and Python 3. From the repo root:</p>
+<pre>.\build.ps1</pre>
+<p>Everything lands in <code>dist\release</code>, with fixed names that the updater and the site's download page look up under <code>releases/latest/download/</code>:</p>
+<ul>
+  <li><code>Power_Slider_Launcher_Setup.exe</code>: Windows installer</li>
+  <li><code>power-slider-launcher_amd64.deb</code>, <code>power-slider-launcher_arm64.deb</code>: Debian, Ubuntu, Raspberry Pi OS</li>
+  <li><code>power-slider-launcher-linux-amd64.tar.gz</code>, <code>power-slider-launcher-linux-arm64.tar.gz</code>: other distributions</li>
+  <li><code>PB_Slider_Launcher_Installer.zip</code>: the installer under its 1.x name, for old links</li>
+</ul>
+<p>The version comes from <code>VERSION</code>. To release: bump it, run the build, and publish a GitHub release tagged <code>v&lt;version&gt;</code> with every file in <code>dist\release</code>.</p>
+
+<h2>Code</h2>
+<p>All in <code>launcher/</code>: <code>main.go</code> (modes and the watchdog), <code>settings.go</code> (the local windows), <code>update.go</code>, <code>config.go</code>, <code>browser.go</code>, and the platform files. <code>go test ./...</code> runs on both platforms.</p>

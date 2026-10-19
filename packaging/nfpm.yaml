@@ -1,0 +1,28 @@
+# .deb for Debian, Ubuntu and Raspberry Pi OS, built by build.ps1 with nfpm
+# (https://nfpm.goreleaser.com). VERSION and ARCH come from the environment.
+name: power-slider-launcher
+arch: ${ARCH}
+platform: linux
+version: ${VERSION}
+section: utils
+priority: optional
+maintainer: Atomo <talkto@powerbislider.com>
+homepage: https://www.powerslider.app
+license: GPL-3.0-only
+description: |
+  Opens a Power Slider presentation in full screen when the computer starts,
+  and opens it again if the browser closes. Needs Google Chrome, Chromium or
+  Microsoft Edge.
+recommends:
+  - chromium | chromium-browser | google-chrome-stable | microsoft-edge-stable
+  - policykit-1 | pkexec
+contents:
+  # build.ps1 copies the binary for ${ARCH} here: nfpm does not expand variables in src.
+  - src: ./dist/build/deb/power-slider-launcher
+    dst: /usr/bin/power-slider-launcher
+    file_info:
+      mode: 0755
+  - src: ./packaging/power-slider-launcher.desktop
+    dst: /usr/share/applications/power-slider-launcher.desktop
+  - src: ./logo.png
+    dst: /usr/share/icons/hicolor/256x256/apps/power-slider-launcher.png
