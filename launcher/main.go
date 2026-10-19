@@ -1,13 +1,16 @@
 // Power Slider Launcher: opens a Power Slider presentation fullscreen when the computer starts,
-// and opens it again if the browser closes or crashes.
+// and opens it again if the browser crashes.
 //
 //	launcher          the settings window
 //	launcher launch   the presentation, in kiosk mode, watched (what the boot shortcut runs)
+//
+// One process does everything (see app.go): a second start only tells the running one what to do.
 package main
 
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"net"
@@ -21,6 +24,11 @@ import (
 // Set at build time from the VERSION file (see build.ps1).
 var version = "dev"
 
+// instanceLock is held by the one running launcher. A loopback port is the lock: the OS frees it
+// when the process dies, however it dies. It is also how a second start talks to the first one:
+// "show" (the settings window), "start" (the presentation) or "quit".
+const instanceLock = "127.0.0.1:47613"
+
 func main() {
 	_ = os.MkdirAll(dataDir(), 0o755)
 	if f, err := os.OpenFile(filepath.Join(dataDir(), "launcher.log"), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644); err == nil {
@@ -33,63 +41,66 @@ func main() {
 		fmt.Println(version)
 		return
 	}
-	if len(os.Args) > 1 && os.Args[1] == "launch" {
-		if err := present(); err != nil {
-			log.Printf("launch: %v", err)
-			os.Exit(1)
+	launch := len(os.Args) > 1 && os.Args[1] == "launch"
+
+	lock, err := net.Listen("tcp", instanceLock)
+	if err != nil {
+		command := "show"
+		if launch {
+			command = "start"
 		}
-		return
+		if sendCommand(command) {
+			log.Printf("already running: sent %q", command)
+			return
+		}
+		log.Printf("instance lock busy and nobody answers: %v", err)
+		os.Exit(1)
 	}
-	if err := runSettings(); err != nil {
+
+	a := newApp(lock)
+	if launch {
+		// At boot someone may be in front of the screen: offer a pending update before presenting.
+		// An unanswered prompt times out and the presentation goes on.
+		if offerUpdateAtBoot(func() { lock.Close() }) {
+			return
+		}
+		if err := a.startPresentation(); err != nil {
+			log.Printf("launch: %v", err)
+		}
+	} else if err := a.showSettings(); err != nil {
 		log.Printf("settings: %v", err)
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
+	a.run()
 }
 
-// Watchdog limits: a browser that exits this many times inside the window was closed on purpose
-// (or cannot start), and reopening it forever would fight the person at the keyboard.
+// sendCommand hands a command to the running launcher.
+func sendCommand(command string) bool {
+	conn, err := net.DialTimeout("tcp", instanceLock, time.Second)
+	if err != nil {
+		return false
+	}
+	defer conn.Close()
+	_, err = conn.Write([]byte(command + "\n"))
+	return err == nil
+}
+
+// readCommand reads one control command from a connection.
+func readCommand(conn net.Conn) string {
+	_ = conn.SetReadDeadline(time.Now().Add(5 * time.Second))
+	line, _ := bufio.NewReader(conn).ReadString('\n')
+	return line
+}
+
+// Crash limits: a browser that crashes this many times inside the window cannot start (no
+// network, a broken update), and the launcher stops trying.
 const (
-	maxQuickExits   = 3
-	quickExitWindow = 2 * time.Minute
+	maxCrashes  = 3
+	crashWindow = 2 * time.Minute
 )
 
-// presentLock is held by the one launcher that is presenting. A second "launch" (Start now clicked
-// again, the shortcut run by hand) would hand its kiosk window to the running browser, which exits
-// at once, and open a window per retry. A loopback port is the lock: the OS frees it when the
-// process dies, however it dies. It doubles as a control channel: "quit" stops the presentation
-// (the updater uses it before replacing the executable).
-const presentLock = "127.0.0.1:47613"
-
-func present() error {
-	lock, err := net.Listen("tcp", presentLock)
-	if err != nil {
-		log.Printf("another launcher is already presenting: %v", err)
-		return nil
-	}
-	defer lock.Close()
-
-	cfg := loadConfig()
-	address, ok := normalizeURL(cfg.URL)
-	if !ok {
-		return fmt.Errorf("no valid Power Slider URL configured (%q)", cfg.URL)
-	}
-	address = presentationURL(address)
-
-	// At boot someone may be in front of the screen: offer a pending update before presenting. An
-	// unanswered prompt times out and the presentation goes on.
-	if offerUpdateAtBoot(func() { lock.Close() }) {
-		return nil
-	}
-
-	p := &presenter{browser: cfg.Browser, address: address}
-	go p.serveControl(lock)
-	// The tray icon owns the main goroutine (Windows needs its message loop there); the watchdog
-	// runs beside it and closes the tray when it stops.
-	return runTray(p)
-}
-
-// presenter is the watchdog: it keeps the kiosk browser open until told to stop.
+// presenter is the watchdog: it keeps the kiosk browser open until the presentation is stopped.
 type presenter struct {
 	browser string
 	address string
@@ -100,7 +111,7 @@ type presenter struct {
 	restarting bool
 }
 
-// stop closes the browser and ends the watchdog (the tray's "Stop presentation", the updater).
+// stop closes the browser and ends the watchdog.
 func (p *presenter) stop() {
 	p.mu.Lock()
 	defer p.mu.Unlock()
@@ -108,7 +119,7 @@ func (p *presenter) stop() {
 	p.killCurrent()
 }
 
-// restart closes the browser and opens it again at once, without counting it as a close.
+// restart closes the browser and opens it again at once.
 func (p *presenter) restart() {
 	p.mu.Lock()
 	defer p.mu.Unlock()
@@ -122,23 +133,11 @@ func (p *presenter) killCurrent() {
 	}
 }
 
-func (p *presenter) serveControl(lock net.Listener) {
-	for {
-		conn, err := lock.Accept()
-		if err != nil {
-			return
-		}
-		line, _ := bufio.NewReader(conn).ReadString('\n')
-		if line == "quit\n" {
-			log.Printf("asked to stop presenting")
-			p.stop()
-		}
-		conn.Close()
-	}
-}
-
+// watch runs the browser until the presentation ends. A browser that a person closed exits with
+// code 0 (Alt+F4, the window's X, Windows shutting down) and ends it; one that crashed or was
+// killed exits with an error code and is opened again.
 func (p *presenter) watch() error {
-	var exits []time.Time
+	var crashes []time.Time
 	delay := 2 * time.Second
 	for {
 		// Looked up again on every start: the browser may have been updated or reinstalled.
@@ -156,33 +155,37 @@ func (p *presenter) watch() error {
 		p.current = cmd
 		p.mu.Unlock()
 		log.Printf("starting %s in kiosk mode: %s", b.Name, p.address)
-		if err := cmd.Run(); err != nil {
-			log.Printf("%s exited: %v", b.Name, err)
-		} else {
-			log.Printf("%s closed after %s", b.Name, time.Since(started).Round(time.Second))
-		}
+		runErr := cmd.Run()
+
 		p.mu.Lock()
 		stop, restart := p.quitting, p.restarting
 		p.restarting = false
 		p.mu.Unlock()
-		if stop {
+		switch {
+		case stop:
+			log.Printf("presentation stopped")
 			return nil
-		}
-		if restart {
+		case restart:
 			continue
+		case runErr == nil:
+			log.Printf("%s closed by the user after %s", b.Name, time.Since(started).Round(time.Second))
+			return nil
 		}
 
+		var exitErr *exec.ExitError
+		if !errors.As(runErr, &exitErr) {
+			return runErr // could not start at all
+		}
+		log.Printf("%s crashed after %s: %v", b.Name, time.Since(started).Round(time.Second), runErr)
 		now := time.Now()
-		exits = append(exits, now)
-		for len(exits) > 0 && now.Sub(exits[0]) > quickExitWindow {
-			exits = exits[1:]
+		crashes = append(crashes, now)
+		for len(crashes) > 0 && now.Sub(crashes[0]) > crashWindow {
+			crashes = crashes[1:]
 		}
-		if len(exits) >= maxQuickExits {
-			log.Printf("browser closed %d times in %s: stopping", len(exits), quickExitWindow)
-			return nil
+		if len(crashes) >= maxCrashes {
+			return fmt.Errorf("browser crashed %d times in %s", len(crashes), crashWindow)
 		}
-		// A browser that ran for a while crashed or was killed: come back quickly. One that died at
-		// once (no network, a broken update) gets an increasing pause.
+		// A browser that ran for a while comes back quickly; one that dies at once waits longer.
 		if time.Since(started) > 10*time.Minute {
 			delay = 2 * time.Second
 		} else if delay < time.Minute {
@@ -192,29 +195,9 @@ func (p *presenter) watch() error {
 	}
 }
 
-// stopPresenting asks a running "launch" to close its kiosk and exit. It reports whether one was
-// running, so the updater knows to start the presentation again afterwards.
-func stopPresenting() bool {
-	conn, err := net.DialTimeout("tcp", presentLock, time.Second)
-	if err != nil {
-		return false
-	}
-	defer conn.Close()
-	_, _ = conn.Write([]byte("quit\n"))
-	// The port frees when that process exits.
-	for i := 0; i < 50; i++ {
-		time.Sleep(200 * time.Millisecond)
-		if l, err := net.Listen("tcp", presentLock); err == nil {
-			l.Close()
-			break
-		}
-	}
-	return true
-}
-
 // offerUpdateAtBoot shows the update prompt when a newer version exists and installs it if the
 // person accepts. It returns true when the installer took over (it starts the presentation again).
-// release frees the presentation lock first, so the launcher the update starts can take it.
+// release frees the instance lock first, so the launcher the update starts can take it.
 func offerUpdateAtBoot(release func()) bool {
 	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
 	u, err := availableUpdate(ctx)

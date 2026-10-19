@@ -33,6 +33,7 @@
   #status.error { color: var(--error); }
   #status.ok { color: var(--ok); }
   .steps { font-size: 12px; color: var(--faint); margin-top: 14px; }
+  .running { font-size: 13px; color: var(--ok); font-weight: 600; margin: -8px 0 14px; }
   .update { display: flex; align-items: center; justify-content: space-between; gap: 12px; background: #fff6dc; border: 1px solid #f8d27a; border-radius: 10px; padding: 10px 12px; margin-bottom: 14px; color: var(--ink); }
   .update button { padding: 7px 12px; }
   [hidden] { display: none !important; }
@@ -41,6 +42,7 @@
 <body>
   <header><img src="logo.svg" alt="Power Slider" /><span class="version" id="version"></span></header>
   <p class="intro" data-t="intro"></p>
+  <p class="running" id="running" data-t="running" hidden></p>
   <div class="update" id="update" hidden><span id="updateText"></span><button class="primary" id="updateButton" data-t="updateButton"></button></div>
 
   <div class="card">
@@ -57,11 +59,8 @@
   </div>
 
   <div class="actions">
-    <button class="primary" id="save" data-t="save"></button>
-    <div class="row">
-      <button id="signin" data-t="signin"></button>
-      <button id="start" data-t="start"></button>
-    </div>
+    <button class="primary" id="start" data-t="start"></button>
+    <button id="save" data-t="save"></button>
   </div>
   <p id="status" role="status"></p>
   <p class="steps" data-t="steps"></p>
@@ -83,6 +82,7 @@ const NAMES = { chrome: 'Google Chrome', edge: 'Microsoft Edge', chromium: 'Chro
   $('version').textContent = 'v' + s.version;
   $('url').value = s.url || '';
   $('autostart').checked = s.autostart;
+  $('running').hidden = !s.presenting;
   $('browser').innerHTML = [`<option value="auto">${t('auto')}</option>`, ...s.browsers.map((b) => `<option value="${b}">${NAMES[b]}</option>`)].join('');
   $('browser').value = s.browsers.includes(s.browser) ? s.browser : 'auto';
 })();
@@ -92,9 +92,9 @@ const save = async () => {
   $('url').value = r.url;
 };
 const fail = (e) => status(e.message === 'invalid_url' ? 'invalid_url' : 'error', 'error');
-// Sign in and Start save first, so they always use what is on screen.
+// Start saves first, so it always uses what is on screen. The launcher then closes this window and
+// goes on in the tray.
 $('save').onclick = async () => { try { await save(); status('saved', 'ok'); } catch (e) { fail(e); } };
-$('signin').onclick = async () => { try { await save(); await call('signin'); status('signinOpened', 'ok'); } catch (e) { fail(e); } };
 $('start').onclick = async () => { try { await save(); await call('start'); status('started', 'ok'); } catch (e) { fail(e); } };
 // Offered, never installed without the click.
 (async () => {
