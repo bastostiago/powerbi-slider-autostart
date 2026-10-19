@@ -4,7 +4,7 @@
 <h2>How it works</h2>
 <ul>
   <li><code>launcher</code> (no arguments) opens the settings window: a local page shown as an Edge/Chrome app window, in the site's eight languages. Save the presentation address, sign in once with Microsoft, start.</li>
-  <li><code>launcher launch</code> is what the boot shortcut runs: the browser in kiosk mode on the address plus <code>?present=1</code> (the site starts the slideshow without a click), restarted when it closes. Three closes within two minutes stop it, so a person can get out with Alt+F4.</li>
+  <li><code>launcher launch</code> is what the boot shortcut runs: the browser in kiosk mode on the address plus <code>?present=1</code> (the site starts the slideshow without a click), restarted when it closes. While it runs, a Power Slider icon in the notification area (Windows key to bring the taskbar over the kiosk) stops or restarts it, or opens the settings. On Linux the icon needs a desktop that shows tray icons (StatusNotifierItem: KDE, XFCE, Cinnamon, Ubuntu); where there is none, three closes within two minutes stop the presentation, so Alt+F4 still gets a person out.</li>
   <li>Updates come from this repository's latest GitHub release. The launcher asks before installing: in the settings window, and at boot (a prompt that gives up after a minute so an unattended screen still presents).</li>
 </ul>
 <p>Version 3 replaced the Python/Selenium launcher. It keeps its executable name, Startup shortcut (<code>PB Slider Launcher.lnk</code> with <code>launch</code>), install folder and data folder (<code>%LOCALAPPDATA%\PB Slider Launcher</code>, with <code>config.ini</code> and the browser profiles), so a screen updated in place keeps its address and its Microsoft session.</p>
@@ -22,4 +22,4 @@
 <p>The version comes from <code>VERSION</code>. To release: bump it, run the build, and publish a GitHub release tagged <code>v&lt;version&gt;</code> with every file in <code>dist\release</code>.</p>
 
 <h2>Code</h2>
-<p>All in <code>launcher/</code>: <code>main.go</code> (modes and the watchdog), <code>settings.go</code> (the local windows), <code>update.go</code>, <code>config.go</code>, <code>browser.go</code>, and the platform files. <code>go test ./...</code> runs on both platforms.</p>
+<p>All in <code>launcher/</code>: <code>main.go</code> (modes and the watchdog), <code>tray.go</code> (the notification-area menu), <code>settings.go</code> (the local windows), <code>update.go</code>, <code>config.go</code>, <code>browser.go</code>, and the platform files. <code>go test ./...</code> runs on both platforms.</p>

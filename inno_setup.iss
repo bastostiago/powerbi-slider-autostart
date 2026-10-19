@@ -1,4 +1,4 @@
-; Windows installer. build.ps1 passes the version: ISCC /DAppVersion=x.y.z inno_setup.iss
+﻿; Windows installer. build.ps1 passes the version: ISCC /DAppVersion=x.y.z inno_setup.iss
 #ifndef AppVersion
   #define AppVersion "0.0.0"
 #endif
@@ -27,6 +27,29 @@ UsePreviousGroup=no
 ; A atualização automática roda este instalador com o launcher aberto: ele fecha o processo.
 CloseApplications=force
 RestartApplications=no
+; Sem pergunta: o instalador fala a língua do Windows (uma das 8 do site; as outras caem no inglês).
+ShowLanguageDialog=no
+LanguageDetectionMethod=uilanguage
+
+[Languages]
+Name: "en"; MessagesFile: "compiler:Default.isl"
+Name: "ptBR"; MessagesFile: "compiler:Languages\BrazilianPortuguese.isl"
+Name: "es"; MessagesFile: "compiler:Languages\Spanish.isl"
+Name: "fr"; MessagesFile: "compiler:Languages\French.isl"
+Name: "de"; MessagesFile: "compiler:Languages\German.isl"
+Name: "it"; MessagesFile: "compiler:Languages\Italian.isl"
+Name: "nl"; MessagesFile: "compiler:Languages\Dutch.isl"
+Name: "ar"; MessagesFile: "compiler:Languages\Arabic.isl"
+
+[CustomMessages]
+en.OpenLauncher=Open Power Slider Launcher
+ptBR.OpenLauncher=Abrir o Power Slider Launcher
+es.OpenLauncher=Abrir Power Slider Launcher
+fr.OpenLauncher=Ouvrir Power Slider Launcher
+de.OpenLauncher=Power Slider Launcher öffnen
+it.OpenLauncher=Apri Power Slider Launcher
+nl.OpenLauncher=Power Slider Launcher openen
+ar.OpenLauncher=فتح Power Slider Launcher
 
 [InstallDelete]
 ; Atalhos com o nome antigo, de instalações anteriores. O da pasta Inicializar não entra aqui.
@@ -40,11 +63,11 @@ Source: "logo.ico"; DestDir: "{app}"; Flags: ignoreversion
 [Icons]
 Name: "{commondesktop}\Power Slider Launcher"; Filename: "{app}\PB Slider Launcher.exe"; IconFilename: "{app}\logo.ico"
 Name: "{group}\Power Slider Launcher"; Filename: "{app}\PB Slider Launcher.exe"; IconFilename: "{app}\logo.ico"
-Name: "{group}\Uninstall Power Slider Launcher"; Filename: "{uninstallexe}"; IconFilename: "{app}\logo.ico"
+Name: "{group}\{cm:UninstallProgram,Power Slider Launcher}"; Filename: "{uninstallexe}"; IconFilename: "{app}\logo.ico"
 
 [Run]
 ; Instalação manual: abre a configuração no fim.
-Filename: "{app}\PB Slider Launcher.exe"; Description: "Open Power Slider Launcher"; Flags: nowait postinstall skipifsilent runasoriginaluser
+Filename: "{app}\PB Slider Launcher.exe"; Description: "{cm:OpenLauncher}"; Flags: nowait postinstall skipifsilent runasoriginaluser
 ; Atualização automática (silenciosa): volta ao que estava aberto, /RELAUNCH=launch ou settings.
 Filename: "{app}\PB Slider Launcher.exe"; Parameters: "launch"; Flags: nowait runasoriginaluser; Check: RelaunchIs('launch')
 Filename: "{app}\PB Slider Launcher.exe"; Flags: nowait runasoriginaluser; Check: RelaunchIs('settings')

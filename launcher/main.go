@@ -82,59 +82,94 @@ func present() error {
 		return nil
 	}
 
-	var (
-		mu       sync.Mutex
-		current  *exec.Cmd
-		quitting bool
-	)
-	go func() {
-		for {
-			conn, err := lock.Accept()
-			if err != nil {
-				return
-			}
-			line, _ := bufio.NewReader(conn).ReadString('\n')
-			if line == "quit\n" {
-				mu.Lock()
-				quitting = true
-				if current != nil && current.Process != nil {
-					_ = current.Process.Kill()
-				}
-				mu.Unlock()
-				log.Printf("asked to stop presenting")
-			}
-			conn.Close()
-		}
-	}()
+	p := &presenter{browser: cfg.Browser, address: address}
+	go p.serveControl(lock)
+	// The tray icon owns the main goroutine (Windows needs its message loop there); the watchdog
+	// runs beside it and closes the tray when it stops.
+	return runTray(p)
+}
 
+// presenter is the watchdog: it keeps the kiosk browser open until told to stop.
+type presenter struct {
+	browser string
+	address string
+
+	mu         sync.Mutex
+	current    *exec.Cmd
+	quitting   bool
+	restarting bool
+}
+
+// stop closes the browser and ends the watchdog (the tray's "Stop presentation", the updater).
+func (p *presenter) stop() {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.quitting = true
+	p.killCurrent()
+}
+
+// restart closes the browser and opens it again at once, without counting it as a close.
+func (p *presenter) restart() {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.restarting = true
+	p.killCurrent()
+}
+
+func (p *presenter) killCurrent() {
+	if p.current != nil && p.current.Process != nil {
+		_ = p.current.Process.Kill()
+	}
+}
+
+func (p *presenter) serveControl(lock net.Listener) {
+	for {
+		conn, err := lock.Accept()
+		if err != nil {
+			return
+		}
+		line, _ := bufio.NewReader(conn).ReadString('\n')
+		if line == "quit\n" {
+			log.Printf("asked to stop presenting")
+			p.stop()
+		}
+		conn.Close()
+	}
+}
+
+func (p *presenter) watch() error {
 	var exits []time.Time
 	delay := 2 * time.Second
 	for {
 		// Looked up again on every start: the browser may have been updated or reinstalled.
-		b, err := findBrowser(cfg.Browser)
+		b, err := findBrowser(p.browser)
 		if err != nil {
 			return err
 		}
 		started := time.Now()
-		cmd := kioskCommand(b, address)
-		mu.Lock()
-		if quitting {
-			mu.Unlock()
+		cmd := kioskCommand(b, p.address)
+		p.mu.Lock()
+		if p.quitting {
+			p.mu.Unlock()
 			return nil
 		}
-		current = cmd
-		mu.Unlock()
-		log.Printf("starting %s in kiosk mode: %s", b.Name, address)
+		p.current = cmd
+		p.mu.Unlock()
+		log.Printf("starting %s in kiosk mode: %s", b.Name, p.address)
 		if err := cmd.Run(); err != nil {
 			log.Printf("%s exited: %v", b.Name, err)
 		} else {
 			log.Printf("%s closed after %s", b.Name, time.Since(started).Round(time.Second))
 		}
-		mu.Lock()
-		stop := quitting
-		mu.Unlock()
+		p.mu.Lock()
+		stop, restart := p.quitting, p.restarting
+		p.restarting = false
+		p.mu.Unlock()
 		if stop {
 			return nil
+		}
+		if restart {
+			continue
 		}
 
 		now := time.Now()
