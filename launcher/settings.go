@@ -11,7 +11,6 @@ import (
 	"net"
 	"net/http"
 	"net/url"
-	"os"
 	"os/exec"
 	"sync"
 	"time"
@@ -28,9 +27,6 @@ type localUI struct {
 	base   string
 	server *http.Server
 	ln     net.Listener
-
-	mu       sync.Mutex
-	lastPing time.Time
 }
 
 func newLocalUI() (*localUI, error) {
@@ -42,28 +38,15 @@ func newLocalUI() (*localUI, error) {
 	if err != nil {
 		return nil, err
 	}
-	ui := &localUI{mux: http.NewServeMux(), base: "/" + hex.EncodeToString(token), ln: ln, lastPing: time.Now()}
+	ui := &localUI{mux: http.NewServeMux(), base: "/" + hex.EncodeToString(token), ln: ln}
 	ui.mux.Handle(ui.base+"/", http.StripPrefix(ui.base, http.FileServerFS(mustSub(uiFiles, "ui"))))
-	ui.handle("ping", func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusNoContent) })
 	ui.server = &http.Server{Handler: ui.mux}
 	go ui.server.Serve(ln)
 	return ui, nil
 }
 
-// handle registers an API route; every call counts as a heartbeat from the window.
 func (ui *localUI) handle(name string, h http.HandlerFunc) {
-	ui.mux.HandleFunc(ui.base+"/api/"+name, func(w http.ResponseWriter, r *http.Request) {
-		ui.mu.Lock()
-		ui.lastPing = time.Now()
-		ui.mu.Unlock()
-		h(w, r)
-	})
-}
-
-func (ui *localUI) idle() time.Duration {
-	ui.mu.Lock()
-	defer ui.mu.Unlock()
-	return time.Since(ui.lastPing)
+	ui.mux.HandleFunc(ui.base+"/api/"+name, h)
 }
 
 func (ui *localUI) open(page string, width, height int) (*exec.Cmd, error) {
@@ -79,22 +62,24 @@ func (ui *localUI) open(page string, width, height int) (*exec.Cmd, error) {
 }
 
 type state struct {
-	URL       string   `json:"url"`
-	Browser   string   `json:"browser"`
-	Autostart bool     `json:"autostart"`
-	Browsers  []string `json:"browsers"`
-	Version   string   `json:"version"`
+	URL        string   `json:"url"`
+	Browser    string   `json:"browser"`
+	Autostart  bool     `json:"autostart"`
+	Browsers   []string `json:"browsers"`
+	Version    string   `json:"version"`
+	Presenting bool     `json:"presenting"`
 }
 
-// runSettings shows the settings window. The process ends when the window stops sending heartbeats.
-func runSettings() error {
-	ui, err := newLocalUI()
-	if err != nil {
-		return err
-	}
+// registerSettings wires the settings window to the running launcher.
+func (a *app) registerSettings(ui *localUI) {
+	ui.handle("ping", func(w http.ResponseWriter, r *http.Request) {
+		a.ping()
+		w.WriteHeader(http.StatusNoContent)
+	})
 	ui.handle("state", func(w http.ResponseWriter, r *http.Request) {
+		a.ping()
 		cfg := loadConfig()
-		writeJSON(w, state{URL: cfg.URL, Browser: cfg.Browser, Autostart: autostartEnabled(), Browsers: installedBrowsers(), Version: version})
+		writeJSON(w, state{URL: cfg.URL, Browser: cfg.Browser, Autostart: autostartEnabled(), Browsers: installedBrowsers(), Version: version, Presenting: a.presenting()})
 	})
 	ui.handle("save", func(w http.ResponseWriter, r *http.Request) {
 		var in state
@@ -117,33 +102,19 @@ func runSettings() error {
 		}
 		writeJSON(w, map[string]string{"url": address})
 	})
-	// Opens the saved address in a normal window of the kiosk's own profile: the Microsoft sign-in
-	// has to happen there once, and a kiosk window cannot be closed by a person.
-	ui.handle("signin", func(w http.ResponseWriter, r *http.Request) {
-		cfg := loadConfig()
-		address, ok := normalizeURL(cfg.URL)
-		if !ok {
-			httpError(w, "invalid_url", errors.New("save a Power Slider URL first"))
-			return
-		}
-		kb, err := findBrowser(cfg.Browser)
-		if err != nil {
-			httpError(w, "no_browser", err)
-			return
-		}
-		if err := windowCommand(kb, address).Start(); err != nil {
-			httpError(w, "start_failed", err)
-			return
-		}
-		writeJSON(w, map[string]bool{"ok": true})
-	})
-	// Starts the presentation exactly as the boot shortcut does, in a process of its own.
+	// Starts (or switches to) the saved presentation and closes the window: the launcher goes on in
+	// the tray, where Settings brings the window back. The first Microsoft sign-in happens inside
+	// the presentation itself.
 	ui.handle("start", func(w http.ResponseWriter, r *http.Request) {
-		if err := startDetached("launch"); err != nil {
+		if err := a.startPresentation(); err != nil {
 			httpError(w, "start_failed", err)
 			return
 		}
 		writeJSON(w, map[string]bool{"ok": true})
+		go func() {
+			time.Sleep(300 * time.Millisecond)
+			a.closeWindow()
+		}()
 	})
 
 	var (
@@ -166,8 +137,9 @@ func runSettings() error {
 		}
 		writeJSON(w, map[string]any{"available": true, "current": version, "latest": u.Version})
 	})
-	// Installs the update the window just showed. A running presentation is stopped first (the
-	// installer replaces the executable it runs from) and started again by the new version.
+	// Installs the update the window just showed. This launcher closes completely first (window,
+	// presentation, process): the installer replaces its executable and starts the new version on
+	// whatever was open.
 	ui.handle("update/apply", func(w http.ResponseWriter, r *http.Request) {
 		pendingMu.Lock()
 		u := pending
@@ -182,27 +154,22 @@ func runSettings() error {
 			return
 		}
 		relaunch := "settings"
-		if stopPresenting() {
+		if a.presenting() {
 			relaunch = "launch"
 		}
-		if err := installUpdate(path, relaunch); err != nil {
-			httpError(w, "install_failed", err)
-			return
-		}
-		log.Printf("updating to %s", u.Version)
 		writeJSON(w, map[string]bool{"ok": true})
-		go func() { time.Sleep(time.Second); os.Exit(0) }()
+		go func() {
+			a.stopPresentation()
+			a.lock.Close() // the new version takes the instance lock
+			if err := installUpdate(path, relaunch); err != nil {
+				log.Printf("update install: %v", err)
+			} else {
+				log.Printf("updating to %s", u.Version)
+			}
+			a.closeWindow()
+			a.exit()
+		}()
 	})
-
-	if _, err := ui.open("index.html", 560, 680); err != nil {
-		return err
-	}
-	for {
-		time.Sleep(5 * time.Second)
-		if ui.idle() > 20*time.Second {
-			return ui.server.Close()
-		}
-	}
 }
 
 // promptUpdate asks, in a small window, whether to install the update now. No answer within a
@@ -229,6 +196,7 @@ func promptUpdate(u *update) bool {
 		default:
 		}
 	})
+	ui.handle("ping", func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusNoContent) })
 	window, err := ui.open("update.html", 460, 300)
 	if err != nil {
 		log.Printf("update prompt: %v", err)
@@ -247,16 +215,6 @@ func promptUpdate(u *update) bool {
 		log.Printf("update %s: no answer, presenting", u.Version)
 		return false
 	}
-}
-
-func startDetached(args ...string) error {
-	exe, err := os.Executable()
-	if err != nil {
-		return err
-	}
-	cmd := exec.Command(exe, args...)
-	hideWindow(cmd)
-	return cmd.Start()
 }
 
 func installedBrowsers() []string {

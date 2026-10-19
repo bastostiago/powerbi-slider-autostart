@@ -3,74 +3,113 @@ package main
 import (
 	"log"
 	"strings"
+	"sync"
 
 	"fyne.io/systray"
 )
 
-// runTray shows the Power Slider icon in the notification area while presenting. Its menu is the
-// way out of a kiosk window, which has no other control: press the Windows key to bring the taskbar
-// over the presentation, then use the icon. On Linux the icon needs a desktop that shows tray icons
-// (StatusNotifierItem: KDE, XFCE, Cinnamon, Ubuntu's GNOME); without one, presenting works the
-// same and Alt+F4 three times remains the way out.
-func runTray(p *presenter) (err error) {
-	if !trayAvailable() {
-		log.Printf("no tray on this desktop: presenting without the icon")
-		return p.watch()
-	}
+// trayMenu is the Power Slider icon in the notification area, shown for as long as the launcher
+// runs. Its menu follows the state: Stop and Restart while presenting, Start when not, Settings
+// always. In a kiosk window the Windows key brings the taskbar over the presentation. On Linux it
+// needs a desktop that shows tray icons (StatusNotifierItem: KDE, XFCE, Cinnamon, Ubuntu's GNOME);
+// elsewhere the launcher runs without it (see trayAvailable).
+type trayMenu struct {
+	start, stop, restart, settings *systray.MenuItem
+}
+
+var (
+	trayMu      sync.Mutex
+	trayRunning bool
+)
+
+// runTray blocks until the launcher exits.
+func runTray(a *app) {
 	tr := trayText(systemLanguage())
-	// The watchdog does not wait for the tray: a desktop without a tray host must still present.
-	done := make(chan error, 1)
-	go func() {
-		done <- p.watch()
-		systray.Quit()
-	}()
-	// Whatever goes wrong in the tray library must not take the presentation down with it.
+	// Whatever goes wrong in the tray library must not take the launcher down with it.
 	defer func() {
 		if r := recover(); r != nil {
 			log.Printf("tray: %v", r)
-			err = <-done
+			<-a.quit
 		}
 	}()
 	systray.Run(func() {
 		systray.SetIcon(trayIcon)
 		systray.SetTooltip(tr.tooltip)
-		stop := systray.AddMenuItem(tr.stop, "")
-		restart := systray.AddMenuItem(tr.restart, "")
+		m := &trayMenu{
+			start:   systray.AddMenuItem(tr.start, ""),
+			stop:    systray.AddMenuItem(tr.stop, ""),
+			restart: systray.AddMenuItem(tr.restart, ""),
+		}
 		systray.AddSeparator()
-		settings := systray.AddMenuItem(tr.settings, "")
+		m.settings = systray.AddMenuItem(tr.settings, "")
+		trayMu.Lock()
+		trayRunning = true
+		a.tray = m
+		trayMu.Unlock()
+		a.refreshTray()
 		go func() {
 			for {
+				var err error
 				select {
-				case <-stop.ClickedCh:
-					log.Printf("tray: stop")
-					p.stop()
-				case <-restart.ClickedCh:
-					log.Printf("tray: restart")
-					p.restart()
-				case <-settings.ClickedCh:
-					if err := startDetached(); err != nil {
-						log.Printf("tray: settings: %v", err)
-					}
+				case <-m.start.ClickedCh:
+					err = a.startPresentation()
+				case <-m.stop.ClickedCh:
+					a.stopPresentation()
+				case <-m.restart.ClickedCh:
+					a.restartPresentation()
+				case <-m.settings.ClickedCh:
+					err = a.showSettings()
+				case <-a.quit:
+					return
+				}
+				if err != nil {
+					log.Printf("tray: %v", err)
 				}
 			}
 		}()
 	}, func() {})
-	// Run also returns when the tray could not start; the presentation goes on until it ends.
-	return <-done
 }
 
-type trayStrings struct{ tooltip, stop, restart, settings string }
+// refreshTray shows the menu items that apply right now.
+func (a *app) refreshTray() {
+	trayMu.Lock()
+	m := a.tray
+	trayMu.Unlock()
+	if m == nil {
+		return
+	}
+	if a.presenting() {
+		m.start.Hide()
+		m.stop.Show()
+		m.restart.Show()
+	} else {
+		m.start.Show()
+		m.stop.Hide()
+		m.restart.Hide()
+	}
+}
+
+func quitTray() {
+	trayMu.Lock()
+	running := trayRunning
+	trayMu.Unlock()
+	if running {
+		systray.Quit()
+	}
+}
+
+type trayStrings struct{ tooltip, start, stop, restart, settings string }
 
 // The site's eight languages, as in ui/i18n.js.
 var trayStringsByLang = map[string]trayStrings{
-	"en":    {"Power Slider: presentation running", "Stop presentation", "Restart presentation", "Settings"},
-	"pt-BR": {"Power Slider: apresentação em andamento", "Parar apresentação", "Reiniciar apresentação", "Configurações"},
-	"es":    {"Power Slider: presentación en curso", "Detener presentación", "Reiniciar presentación", "Configuración"},
-	"fr":    {"Power Slider : présentation en cours", "Arrêter la présentation", "Redémarrer la présentation", "Paramètres"},
-	"de":    {"Power Slider: Präsentation läuft", "Präsentation beenden", "Präsentation neu starten", "Einstellungen"},
-	"it":    {"Power Slider: presentazione in corso", "Interrompi presentazione", "Riavvia presentazione", "Impostazioni"},
-	"nl":    {"Power Slider: presentatie loopt", "Presentatie stoppen", "Presentatie opnieuw starten", "Instellingen"},
-	"ar":    {"Power Slider: العرض قيد التشغيل", "إيقاف العرض", "إعادة تشغيل العرض", "الإعدادات"},
+	"en":    {"Power Slider Launcher", "Start presentation", "Stop presentation", "Restart presentation", "Settings"},
+	"pt-BR": {"Power Slider Launcher", "Iniciar apresentação", "Parar apresentação", "Reiniciar apresentação", "Configurações"},
+	"es":    {"Power Slider Launcher", "Iniciar presentación", "Detener presentación", "Reiniciar presentación", "Configuración"},
+	"fr":    {"Power Slider Launcher", "Démarrer la présentation", "Arrêter la présentation", "Redémarrer la présentation", "Paramètres"},
+	"de":    {"Power Slider Launcher", "Präsentation starten", "Präsentation beenden", "Präsentation neu starten", "Einstellungen"},
+	"it":    {"Power Slider Launcher", "Avvia presentazione", "Interrompi presentazione", "Riavvia presentazione", "Impostazioni"},
+	"nl":    {"Power Slider Launcher", "Presentatie starten", "Presentatie stoppen", "Presentatie opnieuw starten", "Instellingen"},
+	"ar":    {"Power Slider Launcher", "بدء العرض", "إيقاف العرض", "إعادة تشغيل العرض", "الإعدادات"},
 }
 
 // trayText picks the strings for a locale such as "pt-BR", "pt_PT" or "de-AT", falling back to the
