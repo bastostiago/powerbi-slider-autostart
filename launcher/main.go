@@ -27,7 +27,12 @@ var version = "dev"
 // instanceLock is held by the one running launcher. A loopback port is the lock: the OS frees it
 // when the process dies, however it dies. It is also how a second start talks to the first one:
 // "show" (the settings window), "start" (the presentation) or "quit".
-const instanceLock = "127.0.0.1:47613"
+var instanceLock = func() string {
+	if os.Getenv("PSL_DATA_DIR") != "" {
+		return "127.0.0.1:47614" // a trial run must not meet the installed launcher
+	}
+	return "127.0.0.1:47613"
+}()
 
 func main() {
 	_ = os.MkdirAll(dataDir(), 0o755)

@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -84,5 +85,17 @@ func TestNormalizeLocale(t *testing.T) {
 		if got := normalizeLocale(in); got != want {
 			t.Errorf("normalizeLocale(%q) = %q; want %q", in, got, want)
 		}
+	}
+}
+
+// Edge's kiosk modes run InPrivate and lose the sign-in: Edge presents as a fullscreen app window.
+func TestKioskCommandKeepsEdgeProfile(t *testing.T) {
+	edge := strings.Join(kioskCommand(browser{Name: "edge", Path: "msedge"}, "https://x").Args, " ")
+	if strings.Contains(edge, "--kiosk") || !strings.Contains(edge, "--app=https://x") || !strings.Contains(edge, "--start-fullscreen") {
+		t.Errorf("edge: %s", edge)
+	}
+	chrome := strings.Join(kioskCommand(browser{Name: "chrome", Path: "chrome"}, "https://x").Args, " ")
+	if !strings.Contains(chrome, "--kiosk https://x") || !strings.Contains(chrome, "--disable-background-mode") {
+		t.Errorf("chrome: %s", chrome)
 	}
 }
