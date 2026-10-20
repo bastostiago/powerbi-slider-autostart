@@ -58,33 +58,35 @@ func profileDir(b browser) string {
 	}
 }
 
-var commonArgs = []string{
+// noBackground keeps the browser from living on after its last window closes (Edge's background
+// mode and startup boost do, by default): the launcher learns that a person closed the presentation,
+// or the settings window, from the process exiting. Chromium keeps only the last
+// --disable-features, so every feature to disable goes in this one.
+var noBackground = []string{
+	"--disable-background-mode",
+	"--disable-features=Translate,msEdgeStartupBoost,StartupBoost",
+}
+
+var commonArgs = append([]string{
 	"--no-first-run",
 	"--no-default-browser-check",
 	// A kiosk that lost power would otherwise come back with a "restore pages?" bubble.
 	"--disable-session-crashed-bubble",
 	"--hide-crash-restore-bubble",
 	"--noerrdialogs",
-	"--disable-features=Translate",
 	"--autoplay-policy=no-user-gesture-required",
-}
+}, noBackground...)
 
 // kioskCommand opens the presentation fullscreen, without the browser's toolbar.
 func kioskCommand(b browser, address string) *exec.Cmd {
-	args := append([]string{"--user-data-dir=" + profileDir(b), "--kiosk"}, commonArgs...)
+	args := append([]string{"--user-data-dir=" + profileDir(b)}, commonArgs...)
 	if b.Name == "edge" {
-		// Edge's "fullscreen" kiosk is the digital-signage one; "public-browsing" would wipe the
-		// session (and the Microsoft sign-in) when idle.
-		args = append(args, "--edge-kiosk-type=fullscreen")
+		// Not Edge's --kiosk: both of its kiosk types run InPrivate, so the Microsoft sign-in was
+		// gone after every restart. A fullscreen app window keeps the profile and shows no
+		// browser UI either.
+		return exec.Command(b.Path, append(args, "--start-fullscreen", "--app="+address)...)
 	}
-	return exec.Command(b.Path, append(args, address)...)
-}
-
-// windowCommand opens the address in a normal window of the kiosk profile: this is where the first
-// Microsoft sign-in happens, since a kiosk window has no way to be closed by a person.
-func windowCommand(b browser, address string) *exec.Cmd {
-	args := append([]string{"--user-data-dir=" + profileDir(b), "--start-maximized"}, commonArgs...)
-	return exec.Command(b.Path, append(args, address)...)
+	return exec.Command(b.Path, append(args, "--kiosk", address)...)
 }
 
 // appWindowCommand shows a launcher page as a small app window with its own throwaway profile.
@@ -95,5 +97,7 @@ func appWindowCommand(b browser, address string, width, height int) *exec.Cmd {
 		fmt.Sprintf("--window-size=%d,%d", width, height),
 		"--no-first-run",
 		"--no-default-browser-check",
+		noBackground[0],
+		noBackground[1],
 	)
 }
