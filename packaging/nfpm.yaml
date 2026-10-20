@@ -6,7 +6,7 @@ platform: linux
 version: ${VERSION}
 section: utils
 priority: optional
-maintainer: Atomo <talkto@powerbislider.com>
+maintainer: Atomo <talkto@powerslider.app>
 homepage: https://www.powerslider.app
 license: GPL-3.0-only
 description: |
